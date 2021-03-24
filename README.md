@@ -1,1 +1,1 @@
-# MCServerControl
+# MC Server Control
