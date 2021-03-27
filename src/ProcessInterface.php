@@ -6,11 +6,12 @@
  * file that was distributed with this source code.
  */
 
+
 namespace DevLancer\MCServerControl;
 
 
-interface ServerControlInterface
+interface ProcessInterface
 {
-    public function start(LocatorInterface $locator, int $port, array $parameters = []): bool;
-    public function stop(int $port): bool;
+    public function getByName(string $name);
+    public function getByPid(int $pid);
 }

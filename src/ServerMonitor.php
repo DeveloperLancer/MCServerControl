@@ -10,6 +10,8 @@
 namespace DevLancer\MCServerControl;
 
 
+use DevLancer\MCServerControl\Exception\ServerMonitorException;
+use DevLancer\MCServerControl\Exception\ProcessException;
 use phpseclib3\Net\SSH2;
 
 /**
@@ -25,15 +27,21 @@ class ServerMonitor implements ServerMonitorInterface
      */
     private SSH2 $ssh;
 
+    private ProcessInterface $process;
+
     /**
      * ServerMonitor constructor.
      * @param SSH2 $ssh
+     * @param ProcessInterface|null $process
+     * @throws ServerMonitorException
      */
-    public function __construct(SSH2 $ssh)
+    public function __construct(SSH2 $ssh, ProcessInterface $process = null)
     {
         $this->ssh = $ssh;
         if (!$this->ssh->isConnected())
-            throw new \RuntimeException("SSH must be connected");
+            throw new ServerMonitorException("SSH must be connected");
+
+        $this->process = ($process)? $process : new Process($ssh);
     }
 
     /**
@@ -41,7 +49,7 @@ class ServerMonitor implements ServerMonitorInterface
      */
     public function getCpuUsage(int $pid): float
     {
-        $process = Process::getByPid($this->ssh, $pid);
+        $process = $this->process->getByPid($pid);
         if (!$process)
             return 0.0;
 
@@ -53,7 +61,7 @@ class ServerMonitor implements ServerMonitorInterface
      */
     public function getMemoryUsage(int $pid, int $format = self::FORMAT_PERCENTAGE): float
     {
-        $process = Process::getByPid($this->ssh, $pid);
+        $process = $this->process->getByPid($pid);
         if (!$process || !isset($process[MCSC_PROCESS_MEMORY]))
             return 0.0;
 
@@ -79,7 +87,7 @@ class ServerMonitor implements ServerMonitorInterface
      */
     public function getMemory(int $pid): int
     {
-        $process = Process::getByPid($this->ssh, $pid);
+        $process = $this->process->getByPid($pid);
         if (!$process || !isset($process[MCSC_PROCESS_COMMAND]))
             return 0;
 

@@ -6,11 +6,11 @@
  * file that was distributed with this source code.
  */
 
-namespace DevLancer\MCServerControl;
+
+namespace DevLancer\MCServerControl\Exception;
 
 
-interface ServerControlInterface
+class ProcessException extends \Exception
 {
-    public function start(LocatorInterface $locator, int $port, array $parameters = []): bool;
-    public function stop(int $port): bool;
+
 }

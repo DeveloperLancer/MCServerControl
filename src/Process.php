@@ -21,38 +21,55 @@ if (!defined("MCSC_PROCESS_MEMORY"))
 if (!defined("MCSC_PROCESS_COMMAND"))
     define("MCSC_PROCESS_COMMAND", 10);
 
+use DevLancer\MCServerControl\Exception\ProcessException;
 use phpseclib3\Net\SSH2;
 
 /**
  * Class Process
  * @package DevLancer\MCServerControl
  */
-class Process
+class Process implements ProcessInterface
 {
     const CMD_SEARCH = "ps -aux | grep --color=never %s\n";
 
     /**
+     * @var SSH2
+     */
+    private SSH2 $ssh;
+
+    /**
+     * Process constructor.
      * @param SSH2 $ssh
+     * @throws ProcessException
+     */
+    public function __construct(SSH2 $ssh)
+    {
+        $this->ssh = $ssh;
+        if (!$this->ssh->isConnected())
+            throw new ProcessException("SSH must be connected");
+    }
+
+    /**
      * @param string $name
      * @param string $cmd
      * @return string[]|null
+     * @throws ProcessException
      */
-    public static function getByName(SSH2 $ssh, string $name, string $cmd = self::CMD_SEARCH): ?array
+    public function getByName(string $name, string $cmd = self::CMD_SEARCH): ?array
     {
-        if (!$ssh->isConnected())
-            return null;
-
         $cmd = sprintf($cmd, $name);
-        $result = $ssh->exec($cmd);
+        $result = $this->ssh->exec($cmd);
 
         if((bool) !$result)
-            return null;
+            throw new ProcessException(sprintf("Failed to execute: %s", $cmd));
 
         $result = explode("\n", $result)[0];
-        $result = self::explode($result, MCSC_PROCESS_COMMAND);
+        $result = $this->explode($result, MCSC_PROCESS_COMMAND);
 
-        if (!isset($result[MCSC_PROCESS_COMMAND]))
+        if (!isset($result[MCSC_PROCESS_COMMAND])) {
+            trigger_error("The process could not be processed properly", E_USER_WARNING);
             return null;
+        }
 
         if (strpos($result[MCSC_PROCESS_COMMAND], $name) === false)
             return null;
@@ -61,31 +78,30 @@ class Process
     }
 
     /**
-     * @param SSH2 $ssh
      * @param int $pid
      * @param string $cmd
      * @return string[]|null
+     * @throws ProcessException
      */
-    public static function getByPid(SSH2 $ssh, int $pid, string $cmd = self::CMD_SEARCH): ?array
+    public function getByPid(int $pid, string $cmd = self::CMD_SEARCH): ?array
     {
-        if (!$ssh->isConnected())
-            return null;
-
         $cmd = sprintf($cmd, $pid);
-        $result = $ssh->exec($cmd);
+        $result = $this->ssh->exec($cmd);
 
         if((bool) !$result)
-            return null;
+            throw new ProcessException(sprintf("Failed to execute: %s", $cmd));
 
         $result = explode("\n", $result);
         foreach ($result as $item) {
-            $item = self::explode($item, MCSC_PROCESS_COMMAND);
+            $item = $this->explode($item, MCSC_PROCESS_COMMAND);
 
-            if (!isset($item[MCSC_PROCESS_PID]))
+            if (!isset($item[MCSC_PROCESS_PID])) {
+                trigger_error("The process could not be processed properly", E_USER_WARNING);
                 continue;
+            }
 
             if ($item[MCSC_PROCESS_PID] == $pid)
-                return $result;
+                return $item;
         }
 
         return null;
@@ -97,7 +113,7 @@ class Process
      * @param string $separator
      * @return array|string[]
      */
-    public static function explode(string $string, int $length = -1, string $separator = " "): array
+    public function explode(string $string, int $length = -1, string $separator = " "): array
     {
         if ($length == 0)
             return [];

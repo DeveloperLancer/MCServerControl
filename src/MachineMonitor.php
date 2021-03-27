@@ -10,6 +10,9 @@
 namespace DevLancer\MCServerControl;
 
 
+use DevLancer\MCServerControl\Exception\MachineMonitorException;
+use DevLancer\MCServerControl\Exception\ProcessException;
+use DevLancer\MCServerControl\Exception\ServerControlException;
 use phpseclib3\Net\SSH2;
 
 /**
@@ -26,15 +29,21 @@ class MachineMonitor implements MachineMonitorInterface
      */
     private SSH2 $ssh;
 
+    private Process $process;
+
     /**
      * MachineMonitor constructor.
      * @param SSH2 $ssh
+     * @param Process|null $process
+     * @throws MachineMonitorException
      */
-    public function __construct(SSH2 $ssh)
+    public function __construct(SSH2 $ssh, Process $process = null)
     {
         $this->ssh = $ssh;
         if (!$this->ssh->isConnected())
-            throw new \RuntimeException("SSH must be connected");
+            throw new MachineMonitorException("SSH must be connected");
+
+        $this->process = ($process)? $process : new Process($ssh);
     }
 
     /**
@@ -50,7 +59,7 @@ class MachineMonitor implements MachineMonitorInterface
         $cpu = 0.0;
 
         foreach ($result as $item) {
-            $value = Process::explode($item, 10);
+            $value = $this->process->explode($item, 10);
             if (!isset($value[MCSC_PROCESS_CPU]))
                 continue;
 
@@ -111,7 +120,7 @@ class MachineMonitor implements MachineMonitorInterface
             return 0;
 
         $result = explode("\n", $result)[1];
-        $result = Process::explode($result);
+        $result = $this->process->explode($result);
 
         if (!isset($result[$type]))
             return 0;
