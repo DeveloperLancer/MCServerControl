@@ -7,11 +7,11 @@
  */
 
 
-namespace DevLancer\MCServerControl;
+namespace DevLancer\MCServerController;
 
 
-use DevLancer\MCServerControl\Exception\FailedExecute;
-use DevLancer\MCServerControl\Exception\NotSshConnection;
+use DevLancer\MCServerController\Exception\FailedExecute;
+use DevLancer\MCServerController\Exception\NotSshConnection;
 use phpseclib3\Net\SSH2;
 
 /**

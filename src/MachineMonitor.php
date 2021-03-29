@@ -7,10 +7,10 @@
  */
 
 
-namespace DevLancer\MCServerControl;
+namespace DevLancer\MCServerController;
 
 
-use DevLancer\MCServerControl\Exception\FailedExecute;
+use DevLancer\MCServerController\Exception\FailedExecute;
 
 /**
  * Class MachineMonitor

@@ -6,11 +6,11 @@
  * file that was distributed with this source code.
  */
 
-namespace DevLancer\MCServerControl;
+namespace DevLancer\MCServerController;
 
-use DevLancer\MCServerControl\Exception\BadFileType;
-use DevLancer\MCServerControl\Exception\FailedExecute;
-use DevLancer\MCServerControl\Exception\NotFoundFile;
+use DevLancer\MCServerController\Exception\BadFileType;
+use DevLancer\MCServerController\Exception\FailedExecute;
+use DevLancer\MCServerController\Exception\NotFoundFile;
 
 
 /**

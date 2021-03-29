@@ -7,7 +7,7 @@
  */
 
 
-namespace DevLancer\MCServerControl\Exception;
+namespace DevLancer\MCServerController\Exception;
 
 
 use Exception;

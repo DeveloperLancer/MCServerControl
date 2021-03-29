@@ -6,7 +6,7 @@
  * file that was distributed with this source code.
  */
 
-namespace DevLancer\MCServerControl;
+namespace DevLancer\MCServerController;
 
 
 /**
