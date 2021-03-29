@@ -10,10 +10,7 @@
 namespace DevLancer\MCServerControl;
 
 
-use DevLancer\MCServerControl\Exception\MachineMonitorException;
-use DevLancer\MCServerControl\Exception\ProcessException;
-use DevLancer\MCServerControl\Exception\ServerControlException;
-use phpseclib3\Net\SSH2;
+use DevLancer\MCServerControl\Exception\FailedExecute;
 
 /**
  * Class MachineMonitor
@@ -25,33 +22,33 @@ class MachineMonitor implements MachineMonitorInterface
     const CMD_CPU = "ps -aux";
 
     /**
-     * @var SSH2
+     * @var TerminalInterface
      */
-    private SSH2 $ssh;
+    private TerminalInterface $terminal;
 
+    /**
+     * @var Process
+     */
     private Process $process;
 
     /**
      * MachineMonitor constructor.
-     * @param SSH2 $ssh
+     * @param TerminalInterface $terminal
      * @param Process|null $process
-     * @throws MachineMonitorException
      */
-    public function __construct(SSH2 $ssh, Process $process = null)
+    public function __construct(TerminalInterface $terminal, Process $process = null)
     {
-        $this->ssh = $ssh;
-        if (!$this->ssh->isConnected())
-            throw new MachineMonitorException("SSH must be connected");
-
-        $this->process = ($process)? $process : new Process($ssh);
+        $this->terminal = $terminal;
+        $this->process = ($process)? $process : new Process($terminal);
     }
 
     /**
      * @inheritDoc
+     * @throws FailedExecute
      */
     public function getCpuUsage(): float
     {
-        $result = $this->ssh->exec(self::CMD_CPU);
+        $result = $this->terminal->exec(self::CMD_CPU);
         if (!$result)
             return 0.0;
 
@@ -60,10 +57,10 @@ class MachineMonitor implements MachineMonitorInterface
 
         foreach ($result as $item) {
             $value = $this->process->explode($item, 10);
-            if (!isset($value[MCSC_PROCESS_CPU]))
+            if (!isset($value[Process::$processCpu]))
                 continue;
 
-            $cpu += floatval($value[MCSC_PROCESS_CPU]);
+            $cpu += floatval($value[Process::$processCpu]);
         }
 
         return $cpu;
@@ -71,6 +68,7 @@ class MachineMonitor implements MachineMonitorInterface
 
     /**
      * @inheritDoc
+     * @throws FailedExecute
      */
     public function getMemoryUsage(int $format = self::FORMAT_PERCENTAGE): float
     {
@@ -87,6 +85,7 @@ class MachineMonitor implements MachineMonitorInterface
 
     /**
      * @inheritDoc
+     * @throws FailedExecute
      */
     public function getMemory(): int
     {
@@ -95,6 +94,7 @@ class MachineMonitor implements MachineMonitorInterface
 
     /**
      * @inheritDoc
+     * @throws FailedExecute
      */
     public function getMemoryFree(int $format = self::FORMAT_PERCENTAGE): float
     {
@@ -112,10 +112,11 @@ class MachineMonitor implements MachineMonitorInterface
     /**
      * @param int $type
      * @return int
+     * @throws FailedExecute
      */
     private function memory(int $type): int
     {
-        $result = $this->ssh->exec(self::CMD_MEMORY);
+        $result = $this->terminal->exec(self::CMD_MEMORY);
         if (!$result)
             return 0;
 

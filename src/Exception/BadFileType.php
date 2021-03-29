@@ -10,7 +10,9 @@
 namespace DevLancer\MCServerControl\Exception;
 
 
-class ServerControlException extends \Exception
+use Exception;
+
+class BadFileType extends Exception
 {
 
 }

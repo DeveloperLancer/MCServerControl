@@ -10,7 +10,9 @@
 namespace DevLancer\MCServerControl\Exception;
 
 
-class ProcessException extends \Exception
+use Exception;
+
+class NotFoundFile extends Exception
 {
 
 }

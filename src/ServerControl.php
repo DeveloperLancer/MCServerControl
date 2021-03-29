@@ -8,12 +8,10 @@
 
 namespace DevLancer\MCServerControl;
 
-use DevLancer\MCServerControl\Exception\ServerControlException;
-use DevLancer\MCServerControl\Exception\ProcessException;
-use phpseclib3\Net\SSH2;
+use DevLancer\MCServerControl\Exception\BadFileType;
+use DevLancer\MCServerControl\Exception\FailedExecute;
+use DevLancer\MCServerControl\Exception\NotFoundFile;
 
-if (!defined("MCSC_SERVER_NAME"))
-    define("MCSC_SERVER_NAME", "mcserv%s");
 
 /**
  * Class ServerControl
@@ -26,19 +24,9 @@ class ServerControl implements ServerControlInterface
     const CMD_STOP = "screen -X -S %s quit";
 
     /**
-     * @var SSH2
+     * @var string
      */
-    private SSH2 $ssh;
-
-    /**
-     * @var string|null
-     */
-    protected ?string $expect = null;
-
-    /**
-     * @var bool|string
-     */
-    private $responseTerminal = false;
+    public static string $serverName = "mcserv%s";
 
     /**
      * @var ProcessInterface|Process
@@ -46,18 +34,24 @@ class ServerControl implements ServerControlInterface
     private ProcessInterface $process;
 
     /**
-     * ServerControl constructor.
-     * @param SSH2 $ssh
-     * @param ProcessInterface|null $process
-     * @throws ServerControlException
+     * @var Terminal
      */
-    public function __construct(SSH2 $ssh, ProcessInterface $process = null)
-    {
-        $this->ssh = $ssh;
-        if (!$this->ssh->isConnected())
-            throw new ServerControlException("SSH must be connected");
+    private Terminal $terminal;
 
-        $this->process = ($process)? $process : new Process($ssh);
+    /**
+     * @var bool|null|string
+     */
+    private $responseTerminal;
+
+    /**
+     * ServerControl constructor.
+     * @param Terminal $terminal
+     * @param ProcessInterface|null $process
+     */
+    public function __construct(Terminal $terminal, ProcessInterface $process = null)
+    {
+        $this->terminal = $terminal;
+        $this->process = ($process)? $process : new Process($terminal);
     }
 
     /**
@@ -66,28 +60,27 @@ class ServerControl implements ServerControlInterface
      * @param array $parameters
      * @param string $cmd
      * @return bool
-     * @throws ServerControlException
-     * @throws ProcessException
+     * @throws NotFoundFile
+     * @throws FailedExecute
+     * @throws BadFileType
      */
     public function start(LocatorInterface $locator, int $port, array $parameters = [], string $cmd = self::CMD_START): bool
     {
         if (!$locator->isFileExist())
-            throw new ServerControlException(sprintf("The path %s does not exist", $locator->getPath() . "/" . $locator->getFile()));
+            throw new NotFoundFile(sprintf("The path %s does not exist", $locator->getPath() . "/" . $locator->getFile()));
 
         if (preg_match('/(?i)(.*\.jar\z)/', $locator->getFile()) == false)
-            throw new ServerControlException(sprintf("The %s file must be of the .jar type", $locator->getFile()));
+            throw new BadFileType(sprintf("The %s file must be of the .jar type", $locator->getFile()));
 
         if ($this->isRunning($port)) {
-            trigger_error(sprintf("The server for port %s is running", $port), E_USER_WARNING);  //todo
+            trigger_error(sprintf("The server for port %s is running", $port), E_USER_WARNING);
             return false;
         }
 
-        $name = sprintf(MCSC_SERVER_NAME, $port);
+        $name = sprintf(self::$serverName, $port);
         $parameters = implode(" ", $parameters);
         $cmd = sprintf($cmd, $locator->getPath(), $name, $parameters, $locator->getFile(), $port);
-
-        if (!$this->terminal($cmd))
-            throw new ServerControlException(sprintf("Failed to execute: %s", $cmd));
+        $this->responseTerminal = $this->terminal->exec($cmd);
 
         if($this->isRunning($port)) //todo check it
             return true;
@@ -100,7 +93,7 @@ class ServerControl implements ServerControlInterface
      * @param int $port
      * @param string $cmd
      * @return bool
-     * @throws ProcessException
+     * @throws FailedExecute
      */
     public function isRunning(int $port, string $cmd = self::CMD_IS_RUNNING): bool
     {
@@ -112,21 +105,19 @@ class ServerControl implements ServerControlInterface
      * @param int $port
      * @param string $cmd
      * @return bool
-     * @throws ServerControlException
-     * @throws ProcessException
+     * @throws FailedExecute
      */
     public function stop(int $port, string $cmd = self::CMD_STOP): bool
     {
         if (!$this->isRunning($port)) {
-            trigger_error(sprintf("The server for port %s is stopped", $port), E_USER_WARNING);  //todo
+            trigger_error(sprintf("The server for port %s is stopped", $port), E_USER_WARNING);
             return false;
         }
 
-        $name = sprintf(MCSC_SERVER_NAME, $port);
+        $name = sprintf(self::$serverName, $port);
         $cmd = sprintf($cmd, $name);
 
-        if (!$this->terminal($cmd))
-            throw new ServerControlException(sprintf("Failed to execute: %s", $cmd));
+        $this->responseTerminal = $this->terminal->exec($cmd);
 
         if(!$this->isRunning($port)) //todo check it
             return true;
@@ -139,21 +130,19 @@ class ServerControl implements ServerControlInterface
      * @param int $port
      * @param int $mode
      * @return bool
-     * @throws ServerControlException
-     * @throws ProcessException
+     * @throws FailedExecute
      */
     public function kill(int $port, int $mode = 9): bool
     {
         $pid = $this->getPid($port);
         if (!$pid || !$pid > 0) {
-            trigger_error(sprintf("The server for port %s is stopped", $port), E_USER_WARNING);  //todo
+            trigger_error(sprintf("The server for port %s is stopped", $port), E_USER_WARNING);
             return false;
         }
 
         $cmd = "kill -$mode $pid";
 
-        if(!$this->terminal($cmd))
-            throw new ServerControlException(sprintf("Failed to execute: %s", $cmd));
+        $this->responseTerminal = $this->terminal->exec($cmd);
 
         if(!$this->isRunning($port)) //todo check it
             return true;
@@ -163,81 +152,42 @@ class ServerControl implements ServerControlInterface
     }
 
     /**
-     * @return string|null
+     * @param int $port
+     * @param string $cmd
+     * @return int|null
+     * @throws FailedExecute
      */
-    public function getExpect(): ?string
+    public function getPid(int $port, string $cmd = self::CMD_IS_RUNNING): ?int
     {
-        return $this->expect;
+        $name = sprintf(self::$serverName, $port);
+        $process = $this->process->getByName($name, $cmd);
+        if (!$process || !isset($process[Process::$processPid]))
+            return null;
+
+        return (int) $process[Process::$processPid];
     }
 
     /**
-     * @param string $expect
+     * @return TerminalInterface
      */
-    public function setExpect(string $expect): void
+    public function getTerminal(): TerminalInterface
     {
-        $this->expect = $expect;
+        return $this->terminal;
     }
 
     /**
-     * @return string
-     * @throws ServerControlException
+     * @return ProcessInterface
      */
-    public function generateExpect(): string
+    public function getProcess()
     {
-        $read = $this->ssh->read();
-        if (!$read)
-            throw new ServerControlException("There was no answer");
-
-        $result = explode("\n", $this->ssh->read());
-        if ($result == [])
-            throw new ServerControlException("Failed to export 'expect'");
-
-        return end($result);
+        return $this->process;
     }
 
     /**
-     * @param string $command
-     * @param bool $interactive
-     * @return bool
-     * @throws ServerControlException
-     */
-    protected function terminal(string $command, bool $interactive = false): bool
-    {
-        if ($interactive && $this->getExpect() == null)
-            $this->setExpect($this->generateExpect());
-        
-        if (!$interactive) {
-            $this->responseTerminal = $this->ssh->exec($command);
-            return (bool) $this->responseTerminal;
-        }
-
-        $this->ssh->read($this->getExpect());
-        $this->ssh->write("$command\n");
-        $this->responseTerminal = $this->ssh->read($this->getExpect());
-        return (bool) $this->responseTerminal;
-    }
-
-    /**
-     * @return bool|string
+     * @return bool|string|null
      */
     public function getResponseTerminal()
     {
         return $this->responseTerminal;
-    }
-
-    /**
-     * @param int $port
-     * @param string $cmd
-     * @return int|null
-     * @throws ProcessException
-     */
-    public function getPid(int $port, string $cmd = self::CMD_IS_RUNNING): ?int
-    {
-        $name = sprintf(MCSC_SERVER_NAME, $port);
-        $process = $this->process->getByName($name, $cmd);
-        if (!$process || !isset($process[MCSC_PROCESS_PID]))
-            return null;
-
-        return (int) $process[MCSC_PROCESS_PID];
     }
 }

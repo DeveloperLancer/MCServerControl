@@ -10,7 +10,9 @@
 namespace DevLancer\MCServerControl\Exception;
 
 
-class ServerMonitorException extends \Exception
+use Exception;
+
+class FailedExecute extends Exception
 {
 
 }

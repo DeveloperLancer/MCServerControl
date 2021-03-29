@@ -10,9 +10,7 @@
 namespace DevLancer\MCServerControl;
 
 
-use DevLancer\MCServerControl\Exception\ServerMonitorException;
-use DevLancer\MCServerControl\Exception\ProcessException;
-use phpseclib3\Net\SSH2;
+use DevLancer\MCServerControl\Exception\FailedExecute;
 
 /**
  * Class ServerMonitor
@@ -23,29 +21,29 @@ class ServerMonitor implements ServerMonitorInterface
     const CMD_UPTIME = "ps -p %s -o etime";
 
     /**
-     * @var SSH2
+     * @var TerminalInterface
      */
-    private SSH2 $ssh;
+    private TerminalInterface $terminal;
 
+    /**
+     * @var ProcessInterface|Process
+     */
     private ProcessInterface $process;
 
     /**
      * ServerMonitor constructor.
-     * @param SSH2 $ssh
+     * @param TerminalInterface $terminal
      * @param ProcessInterface|null $process
-     * @throws ServerMonitorException
      */
-    public function __construct(SSH2 $ssh, ProcessInterface $process = null)
+    public function __construct(TerminalInterface $terminal, ProcessInterface $process = null)
     {
-        $this->ssh = $ssh;
-        if (!$this->ssh->isConnected())
-            throw new ServerMonitorException("SSH must be connected");
-
-        $this->process = ($process)? $process : new Process($ssh);
+        $this->terminal = $terminal;
+        $this->process = ($process)? $process : new Process($terminal);
     }
 
     /**
      * @inheritDoc
+     * @throws FailedExecute
      */
     public function getCpuUsage(int $pid): float
     {
@@ -53,19 +51,20 @@ class ServerMonitor implements ServerMonitorInterface
         if (!$process)
             return 0.0;
 
-        return (float) $process[MCSC_PROCESS_CPU];
+        return (float) $process[Process::$processCpu];
     }
 
     /**
      * @inheritDoc
+     * @throws FailedExecute
      */
     public function getMemoryUsage(int $pid, int $format = self::FORMAT_PERCENTAGE): float
     {
         $process = $this->process->getByPid($pid);
-        if (!$process || !isset($process[MCSC_PROCESS_MEMORY]))
+        if (!$process || !isset($process[Process::$processMemory]))
             return 0.0;
 
-        $usage = (float) $process[MCSC_PROCESS_MEMORY];
+        $usage = (float) $process[Process::$processMemory];
 
         if ($format == self::FORMAT_PERCENTAGE)
             return $usage;
@@ -84,14 +83,15 @@ class ServerMonitor implements ServerMonitorInterface
 
     /**
      * @inheritDoc
+     * @throws FailedExecute
      */
     public function getMemory(int $pid): int
     {
         $process = $this->process->getByPid($pid);
-        if (!$process || !isset($process[MCSC_PROCESS_COMMAND]))
+        if (!$process || !isset($process[Process::$processCommand]))
             return 0;
 
-        if (!preg_match('/(?i)(xmx[0-9]+[g,m])/', $process[MCSC_PROCESS_COMMAND], $memory))
+        if (!preg_match('/(?i)(xmx[0-9]+[g,m])/', $process[Process::$processCommand], $memory))
             return 0;
 
         $memory = str_ireplace("xmx", "", $memory[0]);
@@ -106,11 +106,12 @@ class ServerMonitor implements ServerMonitorInterface
 
     /**
      * @inheritDoc
+     * @throws FailedExecute
      */
     public function getUptime(int $pid): int
     {
         $cmd = sprintf(self::CMD_UPTIME, $pid);
-        $result = $this->ssh->exec($cmd);
+        $result = $this->terminal->exec($cmd);
         if (!$result)
             return 0;
 

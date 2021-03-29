@@ -10,7 +10,9 @@
 namespace DevLancer\MCServerControl\Exception;
 
 
-class MachineMonitorException extends \Exception
+use Exception;
+
+class NotSshConnection extends Exception
 {
 
 }
