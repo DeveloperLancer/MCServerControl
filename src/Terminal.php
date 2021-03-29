@@ -63,10 +63,12 @@ class Terminal implements TerminalInterface
         $isSudo = ($match == [])? false : true;
 
         if ($isSudo === true && !$this->sudoPassword)
-            throw new FailedExecute("sudoPassword"); //todo dokoncz
+            throw new FailedExecute(sprintf("The sudo password is required to execute the '%s' command", $cmd));
 
-        if (!$isSudo)
-            return $this->ssh->exec($cmd);
+        if (!$isSudo) {
+            $this->response = $this->ssh->exec($cmd);
+            return  $this->response;
+        }
 
         $this->ssh->read('/.*@.*[$|#]/', SSH2::READ_REGEX);
         $this->ssh->write($cmd . "\n");
@@ -88,14 +90,6 @@ class Terminal implements TerminalInterface
     public function getSsh(): SSH2
     {
         return $this->ssh;
-    }
-
-    /**
-     * @param SSH2 $ssh
-     */
-    public function setSsh(SSH2 $ssh): void
-    {
-        $this->ssh = $ssh;
     }
 
     /**

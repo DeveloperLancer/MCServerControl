@@ -64,9 +64,8 @@ class Process implements ProcessInterface
     {
         $cmd = sprintf($cmd, $name);
         $result = $this->terminal->exec($cmd);
-
         $result = explode("\n", $result)[0];
-        $result = $this->explode($result);
+        $result = $this->explode($result, Process::$processCommand);
 
         if (!isset($result[self::$processCommand])) {
             trigger_error("The process could not be processed properly", E_USER_WARNING);
@@ -92,7 +91,7 @@ class Process implements ProcessInterface
         $result = explode("\n", $result);
 
         foreach ($result as $item) {
-            $item = $this->explode($item);
+            $item = $this->explode($item, Process::$processCommand);
 
             if (!isset($item[self::$processPid])) {
                 trigger_error("The process could not be processed properly", E_USER_WARNING);

@@ -20,7 +20,7 @@ use DevLancer\MCServerController\Exception\NotFoundFile;
 class ServerControl implements ServerControlInterface
 {
     const CMD_IS_RUNNING = Process::CMD_SEARCH;
-    const CMD_START = "cd %s; screen -dmS %s java %s -jar %s nogui --port %s";
+    const CMD_START = "cd {PATH}; screen -dmS {NAME} java {PARAMS} -jar {FILE} nogui --port {PORT}";
     const CMD_STOP = "screen -X -S %s quit";
 
     /**
@@ -80,6 +80,18 @@ class ServerControl implements ServerControlInterface
         $name = sprintf(self::$serverName, $port);
         $parameters = implode(" ", $parameters);
         $cmd = sprintf($cmd, $locator->getPath(), $name, $parameters, $locator->getFile(), $port);
+
+        $cmd_params = [
+            'PATH' => $locator->getPath(),
+            'NAME' => $name,
+            'PARAMS' => $parameters,
+            "FILE" => $locator->getFile(),
+            "PORT" => $port
+        ];
+
+        foreach ($cmd_params as $key => $val)
+            $cmd = str_replace("{$key}", $val, $cmd);
+
         $this->responseTerminal = $this->terminal->exec($cmd);
 
         if($this->isRunning($port)) //todo check it
