@@ -1,5 +1,5 @@
 {
-    "name": "dev-lancer/mc-server-controller",
+    "name": "dev-lancer/server-controller",
     "type": "library",
     "description": "",
     "license": "MIT",
@@ -12,12 +12,12 @@
     "minimum-stability": "stable",
     "autoload": {
         "psr-4": {
-            "DevLancer\\MCServerController\\": "src/"
+            "DevLancer\\ServerController\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "DevLancer\\MCServerController\\Tests\\": "tests/"
+            "DevLancer\\ServerController\\Tests\\": "tests/"
         }
     },
     "require": {

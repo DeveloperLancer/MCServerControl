@@ -6,11 +6,14 @@
  * file that was distributed with this source code.
  */
 
+
 namespace DevLancer\ServerController;
 
 
-interface ServerControlInterface
+class Command
 {
-    public function start(LocatorInterface $locator, int $port, string $cmd, array $parameters = []): bool;
-    public function stop(int $port, string $cmd): bool;
+    const IS_RUNNING = Process::CMD_SEARCH;
+
+    const MINECRAFT_START = "cd {PATH}; screen -dmS {NAME} java {PARAMS} -jar {FILE} nogui --port {PORT}";
+    const MINECRAFT_STOP = "screen -X -S %s quit";
 }

@@ -7,10 +7,10 @@
  */
 
 
-namespace DevLancer\MCServerController\Tests;
+namespace DevLancer\ServerController\Tests;
 
-use DevLancer\MCServerController\Process;
-use DevLancer\MCServerController\Terminal;
+use DevLancer\ServerController\Process;
+use DevLancer\ServerController\Terminal;
 use PHPUnit\Framework\TestCase;
 
 class ProcessTest extends TestCase

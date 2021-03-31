@@ -6,11 +6,10 @@
  * file that was distributed with this source code.
  */
 
-namespace DevLancer\MCServerController;
+namespace DevLancer\ServerController;
 
-use DevLancer\MCServerController\Exception\BadFileType;
-use DevLancer\MCServerController\Exception\FailedExecute;
-use DevLancer\MCServerController\Exception\NotFoundFile;
+use DevLancer\ServerController\Exception\FailedExecute;
+use DevLancer\ServerController\Exception\NotFoundFile;
 
 
 /**
@@ -19,14 +18,10 @@ use DevLancer\MCServerController\Exception\NotFoundFile;
  */
 class ServerControl implements ServerControlInterface
 {
-    const CMD_IS_RUNNING = Process::CMD_SEARCH;
-    const CMD_START = "cd {PATH}; screen -dmS {NAME} java {PARAMS} -jar {FILE} nogui --port {PORT}";
-    const CMD_STOP = "screen -X -S %s quit";
-
     /**
      * @var string
      */
-    public static string $serverName = "mcserv%s";
+    public static string $serverName = "serv%s";
 
     /**
      * @var ProcessInterface|Process
@@ -62,15 +57,11 @@ class ServerControl implements ServerControlInterface
      * @return bool
      * @throws NotFoundFile
      * @throws FailedExecute
-     * @throws BadFileType
      */
-    public function start(LocatorInterface $locator, int $port, array $parameters = [], string $cmd = self::CMD_START): bool
+    public function start(LocatorInterface $locator, int $port, string $cmd, array $parameters = []): bool
     {
         if (!$locator->isFileExist())
             throw new NotFoundFile(sprintf("The path %s does not exist", $locator->getPath() . "/" . $locator->getFile()));
-
-        if (preg_match('/(?i)(.*\.jar\z)/', $locator->getFile()) == false)
-            throw new BadFileType(sprintf("The %s file must be of the .jar type", $locator->getFile()));
 
         if ($this->isRunning($port)) {
             trigger_error(sprintf("The server for port %s is running", $port), E_USER_WARNING);
@@ -107,7 +98,7 @@ class ServerControl implements ServerControlInterface
      * @return bool
      * @throws FailedExecute
      */
-    public function isRunning(int $port, string $cmd = self::CMD_IS_RUNNING): bool
+    public function isRunning(int $port, string $cmd = Command::IS_RUNNING): bool
     {
         $pid = $this->getPid($port, $cmd);
         return !is_null($pid);
@@ -119,7 +110,7 @@ class ServerControl implements ServerControlInterface
      * @return bool
      * @throws FailedExecute
      */
-    public function stop(int $port, string $cmd = self::CMD_STOP): bool
+    public function stop(int $port, string $cmd): bool
     {
         if (!$this->isRunning($port)) {
             trigger_error(sprintf("The server for port %s is stopped", $port), E_USER_WARNING);
@@ -169,7 +160,7 @@ class ServerControl implements ServerControlInterface
      * @return int|null
      * @throws FailedExecute
      */
-    public function getPid(int $port, string $cmd = self::CMD_IS_RUNNING): ?int
+    public function getPid(int $port, string $cmd = Command::IS_RUNNING): ?int
     {
         $name = sprintf(self::$serverName, $port);
         $process = $this->process->getByName($name, $cmd);
