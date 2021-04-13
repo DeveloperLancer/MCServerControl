@@ -16,9 +16,6 @@ namespace DevLancer\ServerController;
  */
 interface ServerMonitorInterface
 {
-    const FORMAT_PERCENTAGE = 0;
-    const FORMAT_UNITS = 1;
-
     /**
      * @param int $pid
      * @return float
@@ -27,16 +24,9 @@ interface ServerMonitorInterface
 
     /**
      * @param int $pid
-     * @param int $format
      * @return float
      */
-    public function getMemoryUsage(int $pid, int $format = self::FORMAT_PERCENTAGE): float;
-
-    /**
-     * @param int $pid
-     * @return int
-     */
-    public function getMemory(int $pid): int;
+    public function getMemoryUsage(int $pid): float;
 
     /**
      * @param int $pid

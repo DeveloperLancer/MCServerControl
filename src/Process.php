@@ -62,20 +62,37 @@ class Process implements ProcessInterface
      */
     public function getByName(string $name, string $cmd = self::CMD_SEARCH): ?array
     {
-        $cmd = sprintf($cmd, $name);
+        $cmd = sprintf($cmd, explode("-", $name)[0]);
         $result = $this->terminal->exec($cmd);
-        $result = explode("\n", $result)[0];
-        $result = $this->explode($result, Process::$processCommand);
+        $result = explode("\n", $result);
 
-        if (!isset($result[self::$processCommand])) {
+        $cmd = str_replace("\n", "", $cmd);
+
+        foreach ($result as $value) {
+            if (strpos($value, $name) === false)
+                continue;
+
+            $process = $value;
+            break;
+        }
+
+        if (!isset($process))
+            return null;
+
+        $process = $this->explode($process, Process::$processCommand);
+
+        if (!isset($process[self::$processCommand])) {
             trigger_error("The process could not be processed properly", E_USER_WARNING);
             return null;
         }
 
-        if (strpos($result[self::$processCommand], $name) === false)
+        if (strpos($process[self::$processCommand], $name) === false)
             return null;
 
-        return $result;
+        if ($process[self::$processCommand] == $cmd)
+            return null;
+
+        return $process;
     }
 
     /**

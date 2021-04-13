@@ -18,10 +18,7 @@ use DevLancer\ServerController\Exception\NotFoundFile;
  */
 class ServerControl implements ServerControlInterface
 {
-    /**
-     * @var string
-     */
-    public static string $serverName = "serv%s";
+    CONST SERVER_NAME = "serv-%s";
 
     /**
      * @var ProcessInterface|Process
@@ -29,9 +26,9 @@ class ServerControl implements ServerControlInterface
     private ProcessInterface $process;
 
     /**
-     * @var Terminal
+     * @var TerminalInterface
      */
-    private Terminal $terminal;
+    private TerminalInterface $terminal;
 
     /**
      * @var bool|null|string
@@ -40,10 +37,10 @@ class ServerControl implements ServerControlInterface
 
     /**
      * ServerControl constructor.
-     * @param Terminal $terminal
+     * @param TerminalInterface $terminal
      * @param ProcessInterface|null $process
      */
-    public function __construct(Terminal $terminal, ProcessInterface $process = null)
+    public function __construct(TerminalInterface $terminal, ProcessInterface $process = null)
     {
         $this->terminal = $terminal;
         $this->process = ($process)? $process : new Process($terminal);
@@ -68,7 +65,7 @@ class ServerControl implements ServerControlInterface
             return false;
         }
 
-        $name = sprintf(self::$serverName, $port);
+        $name = sprintf(self::SERVER_NAME, $port);
         $parameters = implode(" ", $parameters);
         $cmd = sprintf($cmd, $locator->getPath(), $name, $parameters, $locator->getFile(), $port);
 
@@ -85,7 +82,7 @@ class ServerControl implements ServerControlInterface
 
         $this->responseTerminal = $this->terminal->exec($cmd);
 
-        if($this->isRunning($port)) //todo check it
+        if($this->isRunning($port))
             return true;
 
         trigger_error("The server failed to start", E_USER_WARNING);
@@ -117,12 +114,12 @@ class ServerControl implements ServerControlInterface
             return false;
         }
 
-        $name = sprintf(self::$serverName, $port);
+        $name = sprintf(self::SERVER_NAME, $port);
         $cmd = sprintf($cmd, $name);
 
         $this->responseTerminal = $this->terminal->exec($cmd);
 
-        if(!$this->isRunning($port)) //todo check it
+        if(!$this->isRunning($port))
             return true;
 
         trigger_error("The server failed to stop", E_USER_WARNING);
@@ -147,7 +144,7 @@ class ServerControl implements ServerControlInterface
 
         $this->responseTerminal = $this->terminal->exec($cmd);
 
-        if(!$this->isRunning($port)) //todo check it
+        if(!$this->isRunning($port))
             return true;
 
         trigger_error("The server was not killed", E_USER_WARNING);
@@ -162,7 +159,7 @@ class ServerControl implements ServerControlInterface
      */
     public function getPid(int $port, string $cmd = Command::IS_RUNNING): ?int
     {
-        $name = sprintf(self::$serverName, $port);
+        $name = sprintf(self::SERVER_NAME, $port);
         $process = $this->process->getByName($name, $cmd);
         if (!$process || !isset($process[Process::$processPid]))
             return null;

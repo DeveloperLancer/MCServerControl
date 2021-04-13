@@ -10,6 +10,8 @@
 namespace DevLancer\ServerController;
 
 
+use phpseclib3\Net\SFTP;
+
 /**
  * Class Locator
  * @package DevLancer\MCServerControl
@@ -21,13 +23,17 @@ class Locator implements LocatorInterface
      */
     private string $path;
 
+    private ?SFTP $sftp;
+
     /**
      * Locator constructor.
      * @param string $path
+     * @param null|SFTP $sftp
      */
-    public function __construct(string $path)
+    public function __construct(?SFTP $sftp = null, string $path = "")
     {
         $this->path = $path;
+        $this->sftp = $sftp;
     }
 
     /**
@@ -54,6 +60,9 @@ class Locator implements LocatorInterface
      */
     public function isFileExist(): bool
     {
-        return file_exists($this->path);
+        if (!$this->sftp || $this->path === "")
+            return true;
+
+        return $this->sftp->file_exists($this->path);
     }
 }

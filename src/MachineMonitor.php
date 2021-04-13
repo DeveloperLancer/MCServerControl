@@ -31,15 +31,21 @@ class MachineMonitor implements MachineMonitorInterface
      */
     private Process $process;
 
+    private int $total = 0;
+    private int $free = 0;
+    private int $usage = 0;
+
     /**
      * MachineMonitor constructor.
      * @param TerminalInterface $terminal
      * @param Process|null $process
+     * @throws FailedExecute
      */
     public function __construct(TerminalInterface $terminal, Process $process = null)
     {
         $this->terminal = $terminal;
         $this->process = ($process)? $process : new Process($terminal);
+        $this->memory();
     }
 
     /**
@@ -63,69 +69,62 @@ class MachineMonitor implements MachineMonitorInterface
             $cpu += floatval($value[Process::$processCpu]);
         }
 
-        return $cpu;
+        return round($cpu, 2);
     }
 
     /**
      * @inheritDoc
-     * @throws FailedExecute
      */
-    public function getMemoryUsage(int $format = self::FORMAT_PERCENTAGE): float
+    public function getMemoryUsage(int $format = self::FORMAT_UNITS): float
     {
-        $total = $this->getMemory();
-        $usage = $total - $this->getMemoryFree(self::FORMAT_UNITS);
-        if ($usage == 0)
+        if ($format == self::FORMAT_UNITS)
+            return (float) $this->usage;
+
+        if ($this->total == 0 || $this->usage == 0)
             return 0.0;
 
-        if ($format == self::FORMAT_PERCENTAGE)
-            return round(($usage * 100) / $total, 2);
-
-        return $usage;
+        return round(($this->usage * 100) / $this->total, 2);
     }
 
     /**
      * @inheritDoc
-     * @throws FailedExecute
      */
     public function getMemory(): int
     {
-        return $this->memory(1);
+        return $this->total;
     }
 
     /**
      * @inheritDoc
-     * @throws FailedExecute
      */
-    public function getMemoryFree(int $format = self::FORMAT_PERCENTAGE): float
+    public function getMemoryFree(int $format = self::FORMAT_UNITS): float
     {
-        $free = $this->memory(3);
+        if ($format == self::FORMAT_UNITS)
+            return (float) $this->free;
 
-        if ($free == 0)
+        if ($this->free == 0 || $this->total == 0)
             return 0.0;
 
-        if (self::FORMAT_PERCENTAGE == $format)
-            return round(($free * 100) / $this->getMemory(), 2);
-
-        return $free;
+        return round(($this->free * 100) / $this->total, 2);
     }
 
     /**
-     * @param int $type
-     * @return int
+     * @return array
      * @throws FailedExecute
      */
-    private function memory(int $type): int
+    public function memory(): array
     {
         $result = $this->terminal->exec(self::CMD_MEMORY);
         if (!$result)
-            return 0;
+            return [];
 
         $result = explode("\n", $result)[1];
         $result = $this->process->explode($result);
 
-        if (!isset($result[$type]))
-            return 0;
+        $this->total = (int) $result[1]?? 0;
+        $this->free  = (int) $result[3]?? 0;
+        $this->usage = (int) $this->total - $this->free;
 
-        return (int) $result[$type];
+        return $result;
     }
 }

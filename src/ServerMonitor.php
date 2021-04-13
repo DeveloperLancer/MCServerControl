@@ -30,6 +30,9 @@ class ServerMonitor implements ServerMonitorInterface
      */
     private ProcessInterface $process;
 
+    private ?int $pid = null;
+    private ?array $resultProcess = null;
+
     /**
      * ServerMonitor constructor.
      * @param TerminalInterface $terminal
@@ -47,61 +50,26 @@ class ServerMonitor implements ServerMonitorInterface
      */
     public function getCpuUsage(int $pid): float
     {
-        $process = $this->process->getByPid($pid);
+        $process = $this->process($pid);
+
         if (!$process)
             return 0.0;
 
-        return (float) $process[Process::$processCpu];
+        return round($process[Process::$processCpu], 2);
     }
 
     /**
      * @inheritDoc
      * @throws FailedExecute
      */
-    public function getMemoryUsage(int $pid, int $format = self::FORMAT_PERCENTAGE): float
+    public function getMemoryUsage(int $pid): float
     {
-        $process = $this->process->getByPid($pid);
+        $process = $this->process($pid);
+
         if (!$process || !isset($process[Process::$processMemory]))
             return 0.0;
 
-        $usage = (float) $process[Process::$processMemory];
-
-        if ($format == self::FORMAT_PERCENTAGE)
-            return $usage;
-
-        if ($usage == 0.0)
-            return 0.0;
-
-        $total = $this->getMemory($pid);
-
-        if ($total == 0)
-            return 0.0;
-
-        return round($usage * $total / 100, 2);
-
-    }
-
-    /**
-     * @inheritDoc
-     * @throws FailedExecute
-     */
-    public function getMemory(int $pid): int
-    {
-        $process = $this->process->getByPid($pid);
-        if (!$process || !isset($process[Process::$processCommand]))
-            return 0;
-
-        if (!preg_match('/(?i)(xmx[0-9]+[g,m])/', $process[Process::$processCommand], $memory))
-            return 0;
-
-        $memory = str_ireplace("xmx", "", $memory[0]);
-        $format = $memory[strlen($memory) - 1];
-        $memory = (int) str_replace($format, "", $memory);
-
-        if ("g" == strtolower($format))
-            $memory *= 1024;
-
-        return $memory;
+        return (float) $process[Process::$processMemory];
     }
 
     /**
@@ -119,9 +87,15 @@ class ServerMonitor implements ServerMonitorInterface
             return 0;
 
         $result = explode(":", $time[0]);
-        $sec = $result[2];
-        $min = $result[1];
-        $hour = $result[0];
+        if (isset($result[2])) {
+            $sec = $result[2];
+            $min = $result[1];
+            $hour = $result[0];
+        } else {
+            $sec = $result[1];
+            $min = $result[0];
+            $hour = "0-0";
+        }
         $day = 0;
         if (strpos($hour, "-") !== false) {
             $result = explode("-", $hour);
@@ -135,5 +109,23 @@ class ServerMonitor implements ServerMonitorInterface
         $time += (int) $sec;
 
         return $time;
+    }
+
+    /**
+     * @param int $pid
+     * @return array|null
+     * @throws FailedExecute
+     */
+    public function process(int $pid): ?array
+    {
+        if ($pid !== $this->pid) {
+            $this->pid = $pid;
+            $process = $this->process->getByPid($pid);
+            $this->resultProcess = $process;
+        } else {
+            $process = $this->resultProcess;
+        }
+
+        return $process;
     }
 }
